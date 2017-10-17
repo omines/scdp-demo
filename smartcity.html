@@ -10,7 +10,7 @@
 <body>
     <div id="map"></div>
 
-    <a href="https://omines.nl" target="_blank">
+    <a href="https://www.omines.nl/" target="_blank">
         <img src="/assets/omines-logo.png" id="logo" alt="Omines Full Service Internetbureau">
     </a>
 
@@ -22,8 +22,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.1/js/bootstrap-colorpicker.min.js"></script>
     <script src="/assets/smartcity.js"></script>
     <script>
-        const strijp = {lat: 51.4466557, lng: 5.4585012}, dtf = new Intl.DateTimeFormat();
-        let api = restful('https://smartcity-api.omines.nl');
+        const api = restful('https://smartcity-api.omines.nl'),
+              strijp = {lat: 51.4466557, lng: 5.4585012};
 
         /**
          * Initializes the demo, automatically invoked by Google Maps API after it is loaded.
@@ -59,7 +59,7 @@
                 subscribeDataset('strijp-security-events', processSecurityEvent);
                 subscribeDataset('strijp-streetlights', processStreetlightEvent).then((oneApi) => {
                     // Retrieve the initial data for the streetlights so we can show them
-                    oneApi.all('records').getAll({limit: 25}).then(function(response) {
+                    oneApi.all('records').getAll({limit: 1000}).then(function(response) {
                         const records = response.body().data().results;
                         console.log(records);
                         records.forEach(function(r) {
