@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <title>SmartCity demo</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
         <link rel="stylesheet" href="/assets/smartcity.css">
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.1/css/bootstrap-colorpicker.min.css">
         <script src="/assets/smartcity.js"></script>
@@ -11,16 +12,14 @@
 
         <div id="map"></div>
 
+        <a href="https://omines.nl" target="_blank">
+            <img src="/assets/omines-logo.png" style="width:179px;height:auto;position:absolute;z-index:999;top:-40px;left:-39px;" alt="omines" />
+        </a>
+
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/restful.js/0.9.6/restful.standalone.min.js" integrity="sha256-7qyfP7fFatBNkzItfiResIKBA1R3vNHnRqVor/831Qg=" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.1/js/bootstrap-colorpicker.min.js"></script>
         <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBIFk4mYOt6vJtpY903qGgv6Ptz6GsusR0&callback=initMap"></script>
 
-        <form id="lamp_form" class="hidden">
-            <div id="lamp_color_picker"></div>
-            <div class="button-wrap">
-                <button type="button" id="lamp_control">Change light color</button>
-            </div>
-        </form>
     </body>
 </html>
