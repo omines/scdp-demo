@@ -1,6 +1,4 @@
-var map,
-    lampTimer,
-    colorPicker,
+let map, lampTimer, colorPicker,
     lampMarkers = [],
     lampAlertWindow = null,
     securityAlertMarkers = [],
@@ -8,21 +6,19 @@ var map,
     activeLampMarker = null;
 
 const nwLat = 51.450102, nwLng = 5.451532, seLat = 51.443442, seLng = 5.463798;
-function getGeoPoint() {
+
+function getRandomGeoPoint() {
   return {lng: nwLng + (Math.random() * (seLng - nwLng)), lat: seLat + (Math.random() * (nwLat - seLat))};
 }
 
 function delay_method(label, callback, time){
-    if (typeof window.delayed_methods == "undefined") {
+    if (typeof window.delayed_methods === "undefined") {
         window.delayed_methods = {};
     }
     delayed_methods[label] = Date.now();
-    var t = delayed_methods[label];
+    let t = delayed_methods[label];
     setTimeout(function() {
-        if (delayed_methods[label] != t) {
-            return;
-        }
-        else{
+        if (delayed_methods[label] === t) {
             callback();
         }
     }, time||500);
@@ -94,8 +90,8 @@ function initSecurityEvents() {
                    else {
                       var alertMarker = new google.maps.Marker(Object.assign({'title':data.record.message}, {
                           position: {
-                              'lng': data.record.location.coordinates[0],
-                              'lat': data.record.location.coordinates[1]
+                              lng: data.record.location.coordinates[0],
+                              lat: data.record.location.coordinates[1]
                           },
                           map: map,
                           draggable: false,
@@ -138,84 +134,61 @@ function initSecurityEvents() {
     });
 }
 
-function placeLanterns()
-{
+function placeStreetlights() {
     lampAlertWindow = new google.maps.InfoWindow({
         content: '<div id="lamp_color_picker" style="width:148px;height:126px"></div>'
     });
-    for (i=0;i<6;i++) {
-        let marker = new google.maps.Marker({
-            position: getGeoPoint(),
-            map: map,
-            draggable: false,
-            icon: getCircleIcon('#ffffff'),
-            marker_key: i,
-            lamp_id: i,
-            lamp_color: '#ffffff'
-        });
-        marker.addListener('click', function(e) {
-            if (activeLampMarker) {
-                activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color));
-            }
-
-            activeLampMarker = marker;
-            activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color, 2));
-            lampAlertWindow.open(map, marker);
-
-            if (colorPicker) {
-                colorPicker.colorpicker('setValue', activeLampMarker.lamp_color);
-            }
-            else {
-                colorPicker = $('#lamp_color_picker');
-                colorPicker.colorpicker({
-                    color: activeLampMarker.lamp_color,
-                    container: true,
-                    inline: true
-                });
-            }
-
-            colorPicker.colorpicker().on('changeColor', function(e) {
-                activeLampMarker.lamp_color = e.color.toString('hex');
-                activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color, 2));
-                delay_method( "lamp_change", function() {
-                    // lamp colour only changed every 200ms
-                    console.log('[' + activeLampMarker.lamp_id + '] => ' + activeLampMarker.lamp_color);
-                }, 200);
-            });
-        });
-        lampMarkers.push(marker);
+    for (i = 0; i < 6; i++) {
+        placeStreetlight(684);
     }
 }
 
-function initMap() {
-    var strijp = {lat: 51.4466557, lng: 5.4585012};
-    map = new google.maps.Map(document.getElementById('map'), {
-        disableDefaultUI: true,
-        zoom: 17,
-        center: strijp,
-        mapTypeControl: false,
-        streetViewControl: false,
-        styles: [
-            {
-                "featureType": "poi",
-                "stylers": [
-                    {
-                        "visibility": "off"
-                    }
-                ]
-            }
-        ]
+function placeStreetlight(light)
+{
+    let id = light._id.$oid;
+    console.log(light);
+    let marker = new google.maps.Marker({
+        position: {
+            lng: light.location.coordinates[0],
+            lat: light.location.coordinates[1]
+        },
+        map: map,
+        draggable: false,
+        icon: getCircleIcon('#ffffff'),
+        marker_key: id,
+        lamp_id: id,
+        lamp_color: '#ffffff'
     });
+    marker.addListener('click', function(e) {
+        if (activeLampMarker) {
+            activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color));
+        }
 
-    console.log('Init security events');
-    initSecurityEvents();
+        activeLampMarker = marker;
+        activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color, 2));
+        lampAlertWindow.open(map, marker);
 
-    console.log('Init lanterns');
-    placeLanterns();
- }
+        if (colorPicker) {
+            colorPicker.colorpicker('setValue', activeLampMarker.lamp_color);
+        }
+        else {
+            colorPicker = $('#lamp_color_picker');
+            colorPicker.colorpicker({
+                color: activeLampMarker.lamp_color,
+                container: true,
+                inline: true
+            });
+        }
 
-// markers[i].setIcon(
-//     {
-//        path: google.maps.SymbolPath.CIRCLE, scale: 20, fillOpacity: 1, strokeWeight: 1, fillColor: '' + fillColor + ''
-//     }
-// );
+        colorPicker.colorpicker().on('changeColor', function(e) {
+            activeLampMarker.lamp_color = e.color.toString('hex');
+            activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color, 2));
+            delay_method( "lamp_change", function() {
+                // lamp colour only changed every 200ms
+                console.log('[' + activeLampMarker.lamp_id + '] => ' + activeLampMarker.lamp_color);
+            }, 200);
+        });
+    });
+    lampMarkers.push(marker);
+}
+
