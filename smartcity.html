@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
     <link rel="stylesheet" href="/assets/smartcity.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.1/css/bootstrap-colorpicker.min.css">
+    <link rel="shortcut icon" href="https://www.omines.nl/favicon.ico">
 </head>
 <body>
     <div id="map"></div>
@@ -40,6 +41,7 @@
                     "stylers": [ { "visibility": "off" } ]
                 }]
             });
+            initDemo();
 
             // Connect to the SCDP API
             api.header('Accept', 'application/json');
@@ -57,50 +59,46 @@
 
                 // Subscribe to the datasets
                 subscribeDataset('strijp-security-events', processSecurityEvent);
-                subscribeDataset('strijp-streetlights', processStreetlightEvent).then((oneApi) => {
+                subscribeDataset('strijp-streetlights', processStreetlightEvent).then((oneApi, ws) => {
                     // Retrieve the initial data for the streetlights so we can show them
                     oneApi.all('records').getAll({limit: 1000}).then(function(response) {
                         const records = response.body().data().results;
-                        console.log(records);
                         records.forEach(function(r) {
                             placeStreetlight(r);
                         });
                     });
                 });
             });
-            console.log('Init streetlights');
-            //placeStreetlights();
         }
 
         /**
          * Subscribe to a single dataset. The supplied callback is invoked with changes to the dataset, a promise is
-         * returned that will resolve to the API endpoint for the dataset once it is resolved.
+         * returned that will resolve to the API endpoint for the dataset once it is resolved and the websocket used
+         * for realtime communication.
          */
         function subscribeDataset(name, callback) {
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve) => {
                 api.all('datasets').getAll({name: name}).then((response) => {
                     const body = response.body(), dataset = body[0].data();
                     console.info('Found dataset ' + name + ' with GUID ' + dataset.id);
 
                     let oneApi = api.one('datasets', dataset.id);
-                    resolve(oneApi);
                     oneApi.custom('stream').get().then((response) => {
                         const stream = response.body().data();
                         const socket = new WebSocket(stream.url);
                         socket.onmessage = callback;
-                        socket.onerror = function(e) { console.log('Error', e)};
-                        socket.onclose = function(e) { console.log('Close', e)};
+                        socket.onerror = function(e) { console.error('Error', e)};
+                        socket.onclose = function(e) { console.info('Close', e)};
+                        resolve(oneApi, socket);
                     });
                 });
             });
         }
 
         function processSecurityEvent(e) {
-            var data = jQuery.parseJSON(e.data);
-            var id = data.record._id.$oid;
-            var found = false;
+            let data = jQuery.parseJSON(e.data), id = data.record._id.$oid, found = false;
             for (i=0;i<securityAlertMarkers.length;i++) {
-                if (securityAlertMarkers[i].id == id) {
+                if (securityAlertMarkers[i].id === id) {
                     found = true;
                     break;
                 }
@@ -120,10 +118,10 @@
                     icon: getArrowIcon(1)
                 }));
                 var alertInfoWindow = new google.maps.InfoWindow({
-                    content: '<h4>' + data.record.message + '</h4>'
+                    content: '<div class="popup"><h4>' + data.record.message + '</h4>'
                     + new Date(data.record.timestamp).toLocaleString()
                     + '<br/>'
-                    + '<form></form>'
+                    + '<form></form></div>'
                 });
                 alertMarker.addListener('click', function() {
                     alertInfoWindow.open(map, alertMarker);
