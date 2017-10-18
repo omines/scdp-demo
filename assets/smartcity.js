@@ -54,7 +54,7 @@ function getArrowIcon(opacity) {
     }
 }
 
-function placeStreetlight(light)
+function placeStreetlight(light, callback)
 {
     let id = light._id.$oid, marker = new google.maps.Marker({
         position: {
@@ -96,7 +96,7 @@ function placeStreetlight(light)
             activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color, 3));
             delayCall('lamp_change', function() {
                 // lamp colour only changed every 200ms
-                console.log('[' + activeLampMarker.lamp_id + '] => ' + activeLampMarker.lamp_color);
+                callback(activeLampMarker.lamp_color);
             }, 200);
         });
     });
