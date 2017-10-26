@@ -89,7 +89,11 @@
                         const socket = new WebSocket(stream.url);
                         socket.onmessage = callback;
                         socket.onerror = function(e) { console.error('Error', e)};
-                        socket.onclose = function(e) { if (!e.wasClean) console.error('Unclean close', e)};
+                        socket.onclose = function(e) {
+                            if (!e.wasClean) console.error('Unclean close', e);
+                            console.info('Lost connection, reconnecting in 5 seconds');
+                            setTimeout(() => { subscribeDataset(name, callback); }, 5000);
+                        };
                         resolve(oneApi, socket);
                     });
                 });
