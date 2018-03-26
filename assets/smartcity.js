@@ -42,15 +42,15 @@ function getCircleIcon(fillColor, stroke) {
     }
 }
 
-function getArrowIcon(opacity) {
+function getArrowIcon(opacity, fillColor, strokeColor) {
     return {
         path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
         scale: 7,
         fillOpacity: opacity,
         strokeWeight: 1,
         strokeOpacity: Math.max((opacity-0.1), 0.1),
-        fillColor: '#BA1111',
-        strokeColor: '#2C78BF'
+        fillColor: fillColor,
+        strokeColor: strokeColor
     }
 }
 

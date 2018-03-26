@@ -57,7 +57,8 @@
                 api.header('Authorization', 'Bearer ' + response.body().data().token);
 
                 // Subscribe to the datasets
-                subscribeDataset('strijp-security-events', processSecurityEvent);
+                subscribeDataset('sorama-events', (e) => processSecurityEvent(e, '#11BA11', '#2C78BF'));
+                //subscribeDataset('strijp-security-events', (e) => processSecurityEvent(e, '#BA1111', '#2C78BF'));
                 subscribeDataset('strijp-streetlights', processStreetlightEvent).then((oneApi, ws) => {
                     // Retrieve the initial data for the streetlights so we can show them
                     oneApi.all('records').getAll({limit: 1000}).then(function(response) {
@@ -100,7 +101,7 @@
             });
         }
 
-        function processSecurityEvent(e) {
+        function processSecurityEvent(e, fill, stroke) {
             let data = jQuery.parseJSON(e.data), id = data.record._id.$oid, found = false;
             for (i=0;i<securityAlertMarkers.length;i++) {
                 if (securityAlertMarkers[i].id === id) {
@@ -120,7 +121,7 @@
                     },
                     map: map,
                     draggable: false,
-                    icon: getArrowIcon(1)
+                    icon: getArrowIcon(1, fill, stroke)
                 }));
                 var alertInfoWindow = new google.maps.InfoWindow({
                     content: '<div class="popup"><h4>' + data.record.message + '</h4>'
@@ -145,7 +146,7 @@
 
                 for (i=1;i<securityAlertMarkers.length;i++) {
                     // we will reduce opacity of all older alerts
-                    securityAlertMarkers[i].marker.setIcon(getArrowIcon(1 - (i*0.1)));
+                    securityAlertMarkers[i].marker.setIcon(getArrowIcon(1 - (i*0.1), fill, stroke));
                 }
             }
         }
