@@ -57,7 +57,15 @@
                 api.header('Authorization', 'Bearer ' + response.body().data().token);
 
                 // Subscribe to the datasets
-                subscribeDataset('sorama-events', (e) => processSecurityEvent(e, '#11BA11', '#2C78BF'));
+                subscribeDataset('sorama-events', (e) => processSecurityEvent(jQuery.parseJSON(e.data), '#11BA11', '#2C78BF')).then((oneApi, ws) => {
+                    oneApi.all('records').getAll({limit: 3}).then(function(response) {
+                        const records = response.body().data().results;
+                        records.forEach(function(r) {
+                            processSecurityEvent({record: r, type: 'insert'}, '#11BA11', '#2C78BF');
+                        });
+                    });
+                });
+
                 //subscribeDataset('strijp-security-events', (e) => processSecurityEvent(e, '#BA1111', '#2C78BF'));
                 subscribeDataset('strijp-streetlights', processStreetlightEvent).then((oneApi, ws) => {
                     // Retrieve the initial data for the streetlights so we can show them
@@ -101,8 +109,8 @@
             });
         }
 
-        function processSecurityEvent(e, fill, stroke) {
-            let data = jQuery.parseJSON(e.data), id = data.record._id.$oid, found = false;
+        function processSecurityEvent(data, fill, stroke) {
+            let id = data.record._id.$oid, found = false;
             for (i=0;i<securityAlertMarkers.length;i++) {
                 if (securityAlertMarkers[i].id === id) {
                     found = true;
