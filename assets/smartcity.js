@@ -1,6 +1,7 @@
 let map, colorPicker,
     lampMarkers = [],
     lampAlertWindow = null,
+    markerGroups = [],
     securityAlertMarkers = [],
     securityAlertInfoWindows = [],
     activeLampMarker = null;
@@ -103,10 +104,11 @@ function placeStreetlight(light, callback)
     lampMarkers.push(marker);
 }
 
-function processSecurityEvent(data, fill, stroke) {
-    let id = data.record._id.$oid, found = false;
-    for (i=0;i<securityAlertMarkers.length;i++) {
-        if (securityAlertMarkers[i].id === id) {
+function processSecurityEvent(data, group, fill, stroke) {
+    if (!markerGroups[group]) markerGroups[group] = [];
+    let id = data.record._id.$oid, found = false, markerGroup = markerGroups[group];
+    for (i=0;i<markerGroup.length;i++) {
+        if (markerGroup[i].id === id) {
             found = true;
             break;
         }
@@ -135,20 +137,20 @@ function processSecurityEvent(data, fill, stroke) {
             alertInfoWindow.open(map, alertMarker);
         });
 
-        securityAlertMarkers.unshift({
+        markerGroup.unshift({
             id: id,
             marker: alertMarker
         });
         securityAlertInfoWindows.unshift(alertInfoWindow);
 
-        if (securityAlertMarkers.length > 10) {
-            securityAlertMarkers.pop().marker.setMap(null);
+        if (markerGroup.length > 10) {
+            markerGroup.pop().marker.setMap(null);
             securityAlertInfoWindows.pop();
         }
 
-        for (i=1;i<securityAlertMarkers.length;i++) {
+        for (i=1;i<markerGroup.length;i++) {
             // we will reduce opacity of all older alerts
-            securityAlertMarkers[i].marker.setIcon(getArrowIcon(1 - (i*0.1), fill, stroke));
+            markerGroup[i].marker.setIcon(getArrowIcon(1 - (i*0.1), fill, stroke));
         }
     }
 }
