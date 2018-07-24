@@ -1,4 +1,4 @@
-let map, colorPicker,
+let map, heatmap, hmPoints = [], colorPicker,
     lampMarkers = [],
     lampAlertWindow = null,
     markerGroups = [],
@@ -104,9 +104,32 @@ function placeStreetlight(light, callback)
     lampMarkers.push(marker);
 }
 
+function placeCamera(camera, callback) {
+    let id = camera._id.$oid, marker = new google.maps.Marker({
+        position: {
+            lat: camera.location.coordinates[0],
+            lng: camera.location.coordinates[1],
+        },
+        map: map,
+        draggable: false,
+        icon: {
+            url: 'assets/camera.png',
+            scaledSize: new google.maps.Size(64, 64),
+        },
+        marker_key: id,
+        camera_info: camera,
+    });
+    const infoWindow = new google.maps.InfoWindow({
+        content: `<h4>${camera.name}</h4><iframe src="${camera.videoUrl}"></iframe><p>${camera.description} <a href="${camera.videoUrl}" target="_blank" rel="noopener">(new tab)</a></p>`,
+    });
+    marker.addListener('click', e => {
+        infoWindow.open(map, marker);
+    });
+}
+
 function processSecurityEvent(data, group, fill, stroke) {
     if (!markerGroups[group]) markerGroups[group] = [];
-    let id = data.record._id.$oid, found = false, markerGroup = markerGroups[group];
+    let id = data.record._id.$oid, found = false, markerGroup = markerGroups[group], location = data.record.location;
     for (i=0;i<markerGroup.length;i++) {
         if (markerGroup[i].id === id) {
             found = true;
@@ -120,8 +143,8 @@ function processSecurityEvent(data, group, fill, stroke) {
     else {
         var alertMarker = new google.maps.Marker(Object.assign({'title':data.record.message}, {
             position: {
-                'lng': data.record.location.coordinates[0],
-                'lat': data.record.location.coordinates[1]
+                'lng': location.coordinates[0],
+                'lat': location.coordinates[1]
             },
             map: map,
             draggable: false,
@@ -152,6 +175,11 @@ function processSecurityEvent(data, group, fill, stroke) {
             // we will reduce opacity of all older alerts
             markerGroup[i].marker.setIcon(getArrowIcon(1 - (i*0.1), fill, stroke));
         }
+
+        hmPoints.forEach(p => p.weight--);
+        hmPoints.unshift({location: new google.maps.LatLng(location.coordinates[1], location.coordinates[0]), weight: 25});
+        if (hmPoints.length > 25) hmPoints.pop();
+        heatmap.setData(hmPoints);
     }
 }
 

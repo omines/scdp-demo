@@ -40,6 +40,11 @@
                     "stylers": [ { "visibility": "off" } ]
                 }]
             });
+            heatmap = new google.maps.visualization.HeatmapLayer({
+                radius: 50,
+                dissipating: true,
+                map: map,
+            });
             initDemo();
 
             // Connect to the SCDP API
@@ -70,7 +75,7 @@
 
                 subscribeDataset('strijp-streetlights', processStreetlightEvent).then((oneApi, ws) => {
                     // Retrieve the initial data for the streetlights so we can show them
-                    oneApi.all('records').getAll({limit: 1000}).then(function(response) {
+                    oneApi.all('records').getAll({limit: 1000}).then(response => {
                         const records = response.body().data().results;
                         records.forEach(function(r) {
                             placeStreetlight(r, (color) => {
@@ -78,6 +83,13 @@
                             });
                         });
                     });
+                });
+
+                getDataset('camera-test').then(api => {
+                    return api.all('records').getAll({limit: 10});
+                }).then(response => {
+                    const records = response.body().data().results;
+                    records.forEach(r => placeCamera(r));
                 });
             });
         }
@@ -88,21 +100,21 @@
          * for realtime communication.
          */
         function subscribeDataset(name, callback) {
-            return new Promise((resolve) => {
-                api.all('datasets').getAll({name: name}).then((response) => {
-                    const body = response.body(), dataset = body[0].data();
-                    console.info('Found dataset ' + name + ' with GUID ' + dataset.id);
-
-                    let oneApi = api.one('datasets', dataset.id);
+            return new Promise(resolve => {
+                getDataset(name).then(oneApi => {
                     oneApi.custom('stream').get().then((response) => {
                         const stream = response.body().data();
                         const socket = new WebSocket(stream.url);
                         socket.onmessage = callback;
-                        socket.onerror = function(e) { console.error('Error', e)};
-                        socket.onclose = function(e) {
+                        socket.onerror = function (e) {
+                            console.error('Error', e)
+                        };
+                        socket.onclose = function (e) {
                             if (!e.wasClean) console.error('Unclean close', e);
                             console.info('Lost connection, reconnecting in 5 seconds');
-                            setTimeout(() => { subscribeDataset(name, callback); }, 5000);
+                            setTimeout(() => {
+                                subscribeDataset(name, callback);
+                            }, 5000);
                         };
                         resolve(oneApi, socket);
                     });
@@ -110,11 +122,25 @@
             });
         }
 
+        function getDataset(name) {
+            return api.all('datasets').getAll({name: name}).then((response) => {
+                const body = response.body(), dataset = body[0].data();
+                console.info('Found dataset ' + name + ' with GUID ' + dataset.id);
+
+                return api.one('datasets', dataset.id);
+            });
+        }
+
+        /**
+         * TBD.
+         *
+         * @param e
+         */
         function processStreetlightEvent(e)
         {
             console.log(e);
         }
     </script>
-    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBIFk4mYOt6vJtpY903qGgv6Ptz6GsusR0&amp;callback=initialize"></script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBIFk4mYOt6vJtpY903qGgv6Ptz6GsusR0&amp;callback=initialize&libraries=visualization"></script>
 </body>
 </html>
