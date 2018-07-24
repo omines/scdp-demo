@@ -103,3 +103,53 @@ function placeStreetlight(light, callback)
     lampMarkers.push(marker);
 }
 
+function processSecurityEvent(data, fill, stroke) {
+    let id = data.record._id.$oid, found = false;
+    for (i=0;i<securityAlertMarkers.length;i++) {
+        if (securityAlertMarkers[i].id === id) {
+            found = true;
+            break;
+        }
+    }
+
+    if (found) {
+        console.log('Marker already exists');
+    }
+    else {
+        var alertMarker = new google.maps.Marker(Object.assign({'title':data.record.message}, {
+            position: {
+                'lng': data.record.location.coordinates[0],
+                'lat': data.record.location.coordinates[1]
+            },
+            map: map,
+            draggable: false,
+            icon: getArrowIcon(1, fill, stroke)
+        }));
+        var alertInfoWindow = new google.maps.InfoWindow({
+            content: '<div class="popup"><h4>' + data.record.message + '</h4>'
+            + new Date(data.record.timestamp).toLocaleString()
+            + '<br/>'
+            + '<form></form></div>'
+        });
+        alertMarker.addListener('click', function() {
+            alertInfoWindow.open(map, alertMarker);
+        });
+
+        securityAlertMarkers.unshift({
+            id: id,
+            marker: alertMarker
+        });
+        securityAlertInfoWindows.unshift(alertInfoWindow);
+
+        if (securityAlertMarkers.length > 10) {
+            securityAlertMarkers.pop().marker.setMap(null);
+            securityAlertInfoWindows.pop();
+        }
+
+        for (i=1;i<securityAlertMarkers.length;i++) {
+            // we will reduce opacity of all older alerts
+            securityAlertMarkers[i].marker.setIcon(getArrowIcon(1 - (i*0.1), fill, stroke));
+        }
+    }
+}
+

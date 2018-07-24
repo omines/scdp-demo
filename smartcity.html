@@ -5,7 +5,7 @@
     <title>SmartCity demo</title>
     <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
     <link rel="stylesheet" href="/assets/smartcity.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.1/css/bootstrap-colorpicker.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.3/css/bootstrap-colorpicker.min.css" integrity="sha256-1kg+SaNnqDn7AaD0skLFrhW4KoZVnAnYnuVP3rC8wqE=" crossorigin="anonymous" />
     <link rel="shortcut icon" href="https://www.omines.nl/favicon.ico">
 </head>
 <body>
@@ -17,9 +17,9 @@
 
     <a href="https://github.com/omines/scdp-demo"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/a6677b08c955af8400f44c6298f40e7d19cc5b2d/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f677261795f3664366436642e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png"></a>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/restful.js/0.9.6/restful.standalone.min.js" integrity="sha256-7qyfP7fFatBNkzItfiResIKBA1R3vNHnRqVor/831Qg=" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.1/js/bootstrap-colorpicker.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.3/js/bootstrap-colorpicker.min.js" integrity="sha256-Y27a5HlqZwshkK8xfNfu6Y0c6+GGX9wTiRe8Xa8ITGY=" crossorigin="anonymous"></script>
     <script src="/assets/smartcity.js"></script>
     <script>
         const api = restful('https://smartcity-api.omines.nl'),
@@ -107,56 +107,6 @@
                     });
                 });
             });
-        }
-
-        function processSecurityEvent(data, fill, stroke) {
-            let id = data.record._id.$oid, found = false;
-            for (i=0;i<securityAlertMarkers.length;i++) {
-                if (securityAlertMarkers[i].id === id) {
-                    found = true;
-                    break;
-                }
-            }
-
-            if (found) {
-                console.log('Marker already exists');
-            }
-            else {
-                var alertMarker = new google.maps.Marker(Object.assign({'title':data.record.message}, {
-                    position: {
-                        'lng': data.record.location.coordinates[0],
-                        'lat': data.record.location.coordinates[1]
-                    },
-                    map: map,
-                    draggable: false,
-                    icon: getArrowIcon(1, fill, stroke)
-                }));
-                var alertInfoWindow = new google.maps.InfoWindow({
-                    content: '<div class="popup"><h4>' + data.record.message + '</h4>'
-                    + new Date(data.record.timestamp).toLocaleString()
-                    + '<br/>'
-                    + '<form></form></div>'
-                });
-                alertMarker.addListener('click', function() {
-                    alertInfoWindow.open(map, alertMarker);
-                });
-
-                securityAlertMarkers.unshift({
-                    id: id,
-                    marker: alertMarker
-                });
-                securityAlertInfoWindows.unshift(alertInfoWindow);
-
-                if (securityAlertMarkers.length > 10) {
-                    securityAlertMarkers.pop().marker.setMap(null);
-                    securityAlertInfoWindows.pop();
-                }
-
-                for (i=1;i<securityAlertMarkers.length;i++) {
-                    // we will reduce opacity of all older alerts
-                    securityAlertMarkers[i].marker.setIcon(getArrowIcon(1 - (i*0.1), fill, stroke));
-                }
-            }
         }
 
         function processStreetlightEvent(e)
