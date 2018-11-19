@@ -1,25 +1,146 @@
-<!DOCTYPE html>
-<html lang="nl">
-    <head>
-        <meta charset="utf-8">
-        <title>SmartCity demo</title>
-        <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-        <link rel="stylesheet" href="/assets/smartcity.css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.1/css/bootstrap-colorpicker.min.css">
-        <script src="/assets/smartcity.js"></script>
-    </head>
-    <body>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>SmartCity demo</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <link rel="stylesheet" href="/assets/smartcity.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.3/css/bootstrap-colorpicker.min.css" integrity="sha256-1kg+SaNnqDn7AaD0skLFrhW4KoZVnAnYnuVP3rC8wqE=" crossorigin="anonymous" />
+    <link rel="shortcut icon" href="https://www.omines.nl/favicon.ico">
+</head>
+<body>
+    <div id="map"></div>
 
-        <div id="map"></div>
+    <a href="https://www.omines.nl/" target="_blank">
+        <img src="/assets/omines-logo.png" id="logo" alt="Omines Full Service Internetbureau">
+    </a>
 
-        <a href="https://omines.nl" target="_blank">
-            <img src="/assets/omines-logo.png" style="width:179px;height:auto;position:absolute;z-index:999;top:-40px;left:-39px;" alt="omines" />
-        </a>
+    <a href="https://github.com/omines/scdp-demo" rel="noopener" target="_blank"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/a6677b08c955af8400f44c6298f40e7d19cc5b2d/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f677261795f3664366436642e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png"></a>
 
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/restful.js/0.9.6/restful.standalone.min.js" integrity="sha256-7qyfP7fFatBNkzItfiResIKBA1R3vNHnRqVor/831Qg=" crossorigin="anonymous"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.1/js/bootstrap-colorpicker.min.js"></script>
-        <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBIFk4mYOt6vJtpY903qGgv6Ptz6GsusR0&callback=initMap"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/restful.js/0.9.6/restful.standalone.min.js" integrity="sha256-7qyfP7fFatBNkzItfiResIKBA1R3vNHnRqVor/831Qg=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/2.5.3/js/bootstrap-colorpicker.min.js" integrity="sha256-Y27a5HlqZwshkK8xfNfu6Y0c6+GGX9wTiRe8Xa8ITGY=" crossorigin="anonymous"></script>
+    <script src="/assets/smartcity.js"></script>
+    <script>
+        const api = restful('https://smartcity-api.omines.nl'),
+              strijp = {lat: 51.4466557, lng: 5.4585012};
 
-    </body>
+        /**
+         * Initializes the demo, automatically invoked by Google Maps API after it is loaded.
+         */
+        function initialize() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                disableDefaultUI: true,
+                zoom: 17,
+                center: strijp,
+                mapTypeControl: false,
+                streetViewControl: false,
+                styles: [{
+                    "featureType": "poi",
+                    "stylers": [ { "visibility": "off" } ]
+                }]
+            });
+            heatmap = new google.maps.visualization.HeatmapLayer({
+                radius: 50,
+                dissipating: true,
+                map: map,
+            });
+            initDemo();
+
+            // Connect to the SCDP API
+            api.header('Accept', 'application/json');
+            api.addErrorInterceptor(function(err, config) {
+                console.error(err);
+                return [err.message];
+            });
+
+            // Authenticate with an access token
+            api.custom('authenticate').post({
+                user: 'Niels',
+                accessToken: 'f89r9mu889'
+            }).then((response) => {
+                api.header('Authorization', 'Bearer ' + response.body().data().token);
+
+                // Subscribe to the datasets
+                subscribeDataset('strijp-security-events', (e) => processSecurityEvent(JSON.parse(e.data), 'strijp', '#BA1111', '#2C78BF'));
+
+                subscribeDataset('sorama-events', (e) => processSecurityEvent(JSON.parse(e.data), 'sorama', '#11BA11', '#2C78BF')).then((oneApi, ws) => {
+                    oneApi.all('records').getAll({limit: 3}).then(function(response) {
+                        const records = response.body().data().results;
+                        records.forEach(function(r) {
+                            processSecurityEvent({record: r, type: 'insert'}, 'sorama', '#11BA11', '#2C78BF');
+                        });
+                    });
+                });
+
+                subscribeDataset('strijp-streetlights', processStreetlightEvent).then((oneApi, ws) => {
+                    // Retrieve the initial data for the streetlights so we can show them
+                    oneApi.all('records').getAll({limit: 1000}).then(response => {
+                        const records = response.body().data().results;
+                        records.forEach(function(r) {
+                            placeStreetlight(r, (color) => {
+                                console.log('Streetlight ' + r.identificatie + ' changed to ' + color);
+                            });
+                        });
+                    });
+                });
+
+                getDataset('camera-test').then(api => {
+                    return api.all('records').getAll({limit: 10});
+                }).then(response => {
+                    const records = response.body().data().results;
+                    records.forEach(r => placeCamera(r));
+                });
+            });
+        }
+
+        /**
+         * Subscribe to a single dataset. The supplied callback is invoked with changes to the dataset, a promise is
+         * returned that will resolve to the API endpoint for the dataset once it is resolved and the websocket used
+         * for realtime communication.
+         */
+        function subscribeDataset(name, callback) {
+            return new Promise(resolve => {
+                getDataset(name).then(oneApi => {
+                    oneApi.custom('stream').get().then((response) => {
+                        const stream = response.body().data();
+                        const socket = new WebSocket(stream.url);
+                        socket.onmessage = callback;
+                        socket.onerror = function (e) {
+                            console.error('Error', e)
+                        };
+                        socket.onclose = function (e) {
+                            if (!e.wasClean) console.error('Unclean close', e);
+                            console.info('Lost connection, reconnecting in 5 seconds');
+                            setTimeout(() => {
+                                subscribeDataset(name, callback);
+                            }, 5000);
+                        };
+                        resolve(oneApi, socket);
+                    });
+                });
+            });
+        }
+
+        function getDataset(name) {
+            return api.all('datasets').getAll({name: name}).then((response) => {
+                const body = response.body(), dataset = body[0].data();
+                console.info('Found dataset ' + name + ' with GUID ' + dataset.id);
+
+                return api.one('datasets', dataset.id);
+            });
+        }
+
+        /**
+         * TBD.
+         *
+         * @param e
+         */
+        function processStreetlightEvent(e)
+        {
+            console.log(e);
+        }
+    </script>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBIFk4mYOt6vJtpY903qGgv6Ptz6GsusR0&amp;callback=initialize&libraries=visualization"></script>
+</body>
 </html>

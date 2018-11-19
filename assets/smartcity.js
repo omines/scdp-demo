@@ -1,28 +1,31 @@
-var map,
-    lampTimer,
-    colorPicker,
+let map, heatmap, hmPoints = [], colorPicker,
     lampMarkers = [],
     lampAlertWindow = null,
+    markerGroups = [],
     securityAlertMarkers = [],
     securityAlertInfoWindows = [],
     activeLampMarker = null;
 
 const nwLat = 51.450102, nwLng = 5.451532, seLat = 51.443442, seLng = 5.463798;
-function getGeoPoint() {
+
+function initDemo() {
+    lampAlertWindow = new google.maps.InfoWindow({
+        content: '<div class="popup"><h4 id="lamp-name"></h4><div id="lamp_color_picker" style="width:148px;height:126px"></div></div>'
+    });
+}
+
+function getRandomGeoPoint() {
   return {lng: nwLng + (Math.random() * (seLng - nwLng)), lat: seLat + (Math.random() * (nwLat - seLat))};
 }
 
-function delay_method(label, callback, time){
-    if (typeof window.delayed_methods == "undefined") {
+function delayCall(label, callback, time){
+    if (typeof window.delayed_methods === "undefined") {
         window.delayed_methods = {};
     }
     delayed_methods[label] = Date.now();
-    var t = delayed_methods[label];
+    let t = delayed_methods[label];
     setTimeout(function() {
-        if (delayed_methods[label] != t) {
-            return;
-        }
-        else{
+        if (delayed_methods[label] === t) {
             callback();
         }
     }, time||500);
@@ -40,182 +43,146 @@ function getCircleIcon(fillColor, stroke) {
     }
 }
 
-function getArrowIcon(opacity) {
+function getArrowIcon(opacity, fillColor, strokeColor) {
     return {
         path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
         scale: 7,
         fillOpacity: opacity,
         strokeWeight: 1,
         strokeOpacity: Math.max((opacity-0.1), 0.1),
-        fillColor: '#BA1111',
-        strokeColor: '#2C78BF'
+        fillColor: fillColor,
+        strokeColor: strokeColor
     }
 }
 
-function initSecurityEvents() {
-    const api = restful('https://smartcity-api.omines.nl'), dtf = new Intl.DateTimeFormat();
-    api.header('Accept', 'application/json');
-    api.addErrorInterceptor(function(err, config) {
-        //$('#data').append(JSON.stringify(err, null, 2));
-        console.error(err);
-        return [err.message];
-    });
-
-    api.custom('authenticate').post({
-        user: 'Niels',
-        accessToken: 'test'
-    }).then((response) => {
-        api.header('Authorization', 'Bearer ' + response.body().data().token);
-
-        api.all('datasets').getAll({name: 'strijp-security-events'}).then((response) => {
-          const body = response.body();
-          if (body.length !== 1) {
-              throw new Error('There must be exactly 1 dataset named "%s"', emulator);
-          }
-          const dataset = body[0].data();
-          api.one('datasets', dataset.id).custom('stream').get().then((response) => {
-              const stream = response.body().data();
-              const socket = new WebSocket(stream.url);
-              socket.onopen = function(e) { console.log('Open', e); };
-              socket.onmessage = function(e) {
-                  var data = jQuery.parseJSON(e.data);
-                  var id = data.record._id.$oid;
-                  var found = false;
-                  for (i=0;i<securityAlertMarkers.length;i++) {
-                       if (securityAlertMarkers[i].id == id) {
-                           found = true;
-                           break;
-                       }
-                   }
-
-                   if (found) {
-                      console.log('Marker already exists');
-                   }
-                   else {
-                      var alertMarker = new google.maps.Marker(Object.assign({'title':data.record.message}, {
-                          position: {
-                              'lng': data.record.location.coordinates[0],
-                              'lat': data.record.location.coordinates[1]
-                          },
-                          map: map,
-                          draggable: false,
-                          icon: getArrowIcon(1)
-                      }));
-                      var alertInfoWindow = new google.maps.InfoWindow({
-                          content: '<h4>' + data.record.message + '</h4>'
-                                   + new Date(data.record.timestamp).toLocaleString()
-                                   + '<br/>'
-                                   + '<form></form>'
-                      });
-                      alertMarker.addListener('click', function() {
-                          alertInfoWindow.open(map, alertMarker);
-                      });
-
-                      securityAlertMarkers.unshift({
-                          id: id,
-                          marker: alertMarker
-                      });
-                      securityAlertInfoWindows.unshift(alertInfoWindow);
-
-                      if (securityAlertMarkers.length > 10) {
-                         securityAlertMarkers.pop().marker.setMap(null);
-                         securityAlertInfoWindows.pop();
-                     }
-
-                     for (i=1;i<securityAlertMarkers.length;i++) {
-                         // we will reduce opacity of all older alerts
-                         securityAlertMarkers[i].marker.setIcon(getArrowIcon(1 - (i*0.1)));
-                     }
-                  }
-              };
-              socket.onerror = function(e) { console.log('Error', e)};
-              socket.onclose = function(e) { console.log('Close', e)};
-
-          });
-        });
-    }).catch((error) => {
-        console.error(error);
-    });
-}
-
-function placeLanterns()
+function placeStreetlight(light, callback)
 {
-    lampAlertWindow = new google.maps.InfoWindow({
-        content: '<div id="lamp_color_picker" style="width:148px;height:126px"></div>'
+    let id = light._id.$oid, marker = new google.maps.Marker({
+        position: {
+            lng: light.location.coordinates[0],
+            lat: light.location.coordinates[1]
+        },
+        map: map,
+        draggable: false,
+        icon: getCircleIcon('#ffffff'),
+        marker_key: id,
+        lamp_id: id,
+        lamp_info: light,
+        lamp_color: '#ffffff'
     });
-    for (i=0;i<6;i++) {
-        let marker = new google.maps.Marker({
-            position: getGeoPoint(),
-            map: map,
-            draggable: false,
-            icon: getCircleIcon('#ffffff'),
-            marker_key: i,
-            lamp_id: i,
-            lamp_color: '#ffffff'
-        });
-        marker.addListener('click', function(e) {
-            if (activeLampMarker) {
-                activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color));
-            }
+    marker.addListener('click', function(e) {
+        if (activeLampMarker) {
+            activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color));
+        }
 
-            activeLampMarker = marker;
-            activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color, 2));
-            lampAlertWindow.open(map, marker);
+        activeLampMarker = marker;
+        activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color, 3));
+        lampAlertWindow.open(map, marker);
 
+        setTimeout(() => {
+            console.log(marker.lamp_info);
+            $('#lamp-name').text(marker.lamp_info.straatnaam);
             if (colorPicker) {
                 colorPicker.colorpicker('setValue', activeLampMarker.lamp_color);
-            }
-            else {
+            } else {
                 colorPicker = $('#lamp_color_picker');
+                console.log(colorPicker);
                 colorPicker.colorpicker({
                     color: activeLampMarker.lamp_color,
-                    container: true,
-                    inline: true
-                });
+                   container: true,
+                   inline: true
+               });
             }
 
             colorPicker.colorpicker().on('changeColor', function(e) {
                 activeLampMarker.lamp_color = e.color.toString('hex');
-                activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color, 2));
-                delay_method( "lamp_change", function() {
+                activeLampMarker.setIcon(getCircleIcon(activeLampMarker.lamp_color, 3));
+                delayCall('lamp_change', function() {
                     // lamp colour only changed every 200ms
-                    console.log('[' + activeLampMarker.lamp_id + '] => ' + activeLampMarker.lamp_color);
+                    callback(activeLampMarker.lamp_color);
                 }, 200);
             });
+        }, 100);
+    });
+    lampMarkers.push(marker);
+}
+
+function placeCamera(camera, callback) {
+    let id = camera._id.$oid, marker = new google.maps.Marker({
+        position: {
+            lat: camera.location.coordinates[0],
+            lng: camera.location.coordinates[1],
+        },
+        map: map,
+        draggable: false,
+        icon: {
+            url: 'assets/camera.png',
+            scaledSize: new google.maps.Size(64, 64),
+        },
+        marker_key: id,
+        camera_info: camera,
+    });
+    const infoWindow = new google.maps.InfoWindow({
+        content: `<h3>${camera.name}</h3><iframe src="${camera.videoUrl}"></iframe><p>${camera.description} <a href="${camera.videoUrl}" target="_blank" rel="noopener">(new tab)</a></p>`,
+    });
+    marker.addListener('click', e => {
+        infoWindow.open(map, marker);
+    });
+}
+
+function processSecurityEvent(data, group, fill, stroke) {
+    if (!markerGroups[group]) markerGroups[group] = [];
+    let id = data.record._id.$oid, found = false, markerGroup = markerGroups[group], location = data.record.location;
+    for (i=0;i<markerGroup.length;i++) {
+        if (markerGroup[i].id === id) {
+            found = true;
+            break;
+        }
+    }
+
+    if (found) {
+        console.log('Marker already exists');
+    }
+    else {
+        var alertMarker = new google.maps.Marker(Object.assign({'title':data.record.message}, {
+            position: {
+                'lng': location.coordinates[0],
+                'lat': location.coordinates[1]
+            },
+            map: map,
+            draggable: false,
+            icon: getArrowIcon(1, fill, stroke)
+        }));
+        var alertInfoWindow = new google.maps.InfoWindow({
+            content: '<div class="popup"><h4>' + data.record.message + '</h4>'
+            + new Date(data.record.timestamp).toLocaleString()
+            + '<br/>'
+            + '<form></form></div>'
         });
-        lampMarkers.push(marker);
+        alertMarker.addListener('click', function() {
+            alertInfoWindow.open(map, alertMarker);
+        });
+
+        markerGroup.unshift({
+            id: id,
+            marker: alertMarker
+        });
+        securityAlertInfoWindows.unshift(alertInfoWindow);
+
+        if (markerGroup.length > 10) {
+            markerGroup.pop().marker.setMap(null);
+            securityAlertInfoWindows.pop();
+        }
+
+        for (i=1;i<markerGroup.length;i++) {
+            // we will reduce opacity of all older alerts
+            markerGroup[i].marker.setIcon(getArrowIcon(1 - (i*0.1), fill, stroke));
+        }
+
+        hmPoints.forEach(p => p.weight--);
+        hmPoints.unshift({location: new google.maps.LatLng(location.coordinates[1], location.coordinates[0]), weight: 25});
+        if (hmPoints.length > 25) hmPoints.pop();
+        heatmap.setData(hmPoints);
     }
 }
 
-function initMap() {
-    var strijp = {lat: 51.4466557, lng: 5.4585012};
-    map = new google.maps.Map(document.getElementById('map'), {
-        disableDefaultUI: true,
-        zoom: 17,
-        center: strijp,
-        mapTypeControl: false,
-        streetViewControl: false,
-        styles: [
-            {
-                "featureType": "poi",
-                "stylers": [
-                    {
-                        "visibility": "off"
-                    }
-                ]
-            }
-        ]
-    });
-
-    console.log('Init security events');
-    initSecurityEvents();
-
-    console.log('Init lanterns');
-    placeLanterns();
- }
-
-// markers[i].setIcon(
-//     {
-//        path: google.maps.SymbolPath.CIRCLE, scale: 20, fillOpacity: 1, strokeWeight: 1, fillColor: '' + fillColor + ''
-//     }
-// );

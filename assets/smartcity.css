@@ -1,3 +1,20 @@
+/* Global classes */
+.button-wrap {
+    padding: 0 4px 4px 4px;
+}
+.hidden {
+    display: none;
+}
+
+/* Layout */
+#logo {
+    height: auto;
+    left: -39px;
+    position: absolute;
+    top: -40px;
+    width: 179px;
+    z-index: 999;
+}
 #map {
 	position: absolute;
 	left: 0;
@@ -6,6 +23,7 @@
 	top: 0;
 }
 
+/* Elements */
 #lamp_form {
 	background: #fff;
 	position: absolute;
@@ -13,7 +31,6 @@
 	right: 15px;
 	z-index: 9;
 }
-
 #lamp_form button {
 	background: #2C78BF;
 	border-radius: 4px;
@@ -24,11 +41,6 @@
 	width: 100%;
     padding: 5px 2px;
 }
-
-.button-wrap {
-	padding: 0 4px 4px 4px;
-}
-
-.hidden {
-	display: none;
+.popup h4 {
+    margin: 0.5em 0 1em;
 }
